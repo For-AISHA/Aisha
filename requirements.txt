@@ -1,0 +1,15 @@
+langchain
+langchain_community
+python-dotenv
+ipykernel
+langchain-text-splitters
+langchain-openai
+sentence-transformers
+langchain_groq
+fastapi
+uvicorn
+langserve
+pydantic==1.10.13
+sse_starlette
+sqlAlchemy
+mysql-connector-python
