@@ -68,12 +68,14 @@ prompt = ChatPromptTemplate.from_messages(
                       If they want to know about their order, ask them for their order number and provide them with the details.
                       Don't be too frank and don't answer unrelated questions, if a user asks anything that is not related, 
                       ask them to ask only related questions politely.
+                      Greet them at the start of the conversation, not in every response. Also, don't repeat things unless they ask you to.
                       DON'T OFFER THEM ANY DISCOUNTS OR PROMOTIONS OF YOUR OWN ACCORD.
                       There is a flow to follow in the conversation, follow it and provide the best possible solution to the user.
                       First, greet the user, then ask them for their name and phone number, then ask them for their query,
                       then provide them with the solution, if they are not satisfied, then lodge a complaint and raise a ticket. 
                       And at last, ask them if they have any other queries.
                       If they have any other queries, ask them to ask them one by one.
+                      If the user says he/she doesn't have any more queries, then end the conversation by saying "Thank you for contacting us. Have a great day!"
                       '''),
         ('assistant', 'Hi! My name is AISHA. How can I help you today?'),
         ("human", "{query}"),
@@ -104,6 +106,8 @@ add_routes(
     with_message_history,
     path='/chat',
 )
+
+
 
 if __name__ == '__main__':
     import uvicorn
