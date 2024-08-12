@@ -1,4 +1,18 @@
 import sqlite3
+import random
+import string
+
+# Function to generate patterned IDs
+def generate_order_id():
+    return f"{random.randint(10000, 99999)}{random.choice(string.ascii_uppercase)}{random.choice(string.ascii_uppercase)}{random.choice(string.ascii_uppercase)}"
+
+def generate_product_id():
+    number_part = random.randint(1000, 9999)
+    letters_part = ''.join(random.choices(string.ascii_uppercase, k=5))
+    return f"{number_part}{letters_part}"
+
+def generate_user_id():
+    return f"U{random.randint(1000, 9999)}"
 
 # Connect to SQLite database (or create it if it doesn't exist)
 conn = sqlite3.connect('walmart.db')
@@ -9,7 +23,7 @@ cursor = conn.cursor()
 # Customers table
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS customers (
-    userId INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId TEXT PRIMARY KEY,
     firstName TEXT NOT NULL,
     lastName TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
@@ -22,8 +36,8 @@ CREATE TABLE IF NOT EXISTS customers (
 # Complaints table
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS complaints (
-    ticketNo INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId INTEGER,
+    ticketNo TEXT PRIMARY KEY,
+    userId TEXT,
     issue TEXT NOT NULL,
     complaintDate DATE DEFAULT (datetime('now')),
     status TEXT DEFAULT 'Open',
@@ -34,8 +48,8 @@ CREATE TABLE IF NOT EXISTS complaints (
 # Orders table
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS orders (
-    orderId INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId INTEGER,
+    orderId TEXT PRIMARY KEY,
+    userId TEXT,
     orderDate DATE DEFAULT (datetime('now')),
     totalAmount REAL NOT NULL,
     status TEXT DEFAULT 'Pending',
@@ -47,7 +61,7 @@ CREATE TABLE IF NOT EXISTS orders (
 # Products table
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS products (
-    productId INTEGER PRIMARY KEY AUTOINCREMENT,
+    productId TEXT PRIMARY KEY,
     productName TEXT NOT NULL,
     price REAL NOT NULL,
     stockQuantity INTEGER NOT NULL
@@ -58,8 +72,8 @@ CREATE TABLE IF NOT EXISTS products (
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS orderDetails (
     orderDetailId INTEGER PRIMARY KEY AUTOINCREMENT,
-    orderId INTEGER,
-    productId INTEGER,
+    orderId TEXT,
+    productId TEXT,
     quantity INTEGER NOT NULL,
     price REAL NOT NULL,
     FOREIGN KEY (orderId) REFERENCES orders (orderId),
@@ -68,56 +82,71 @@ CREATE TABLE IF NOT EXISTS orderDetails (
 ''')
 
 # Insert sample records into customers table
+customers = [
+    (generate_user_id(), 'Dhairya', 'Arora', 'dhairya2arora@gmail.com', '9811264318', '357, Hakikat Nagar, Delhi-110009'),
+    (generate_user_id(), 'Yash', 'Khattar', 'yashkhattar73@gmail.com', '8448721780', 'Gurugram, Haryana'),
+    (generate_user_id(), 'Mahak', 'Arora', 'aroradhairya4@gmail.com', '9811264317', '357, Hakikat Nagar, Delhi-110009'),
+    (generate_user_id(), 'Ravi', 'Sharma', 'ravi.sharma@example.com', '9876543210', 'Noida, Uttar Pradesh'),
+    (generate_user_id(), 'Sneha', 'Patel', 'sneha.patel@example.com', '9988776655', 'Mumbai, Maharashtra')
+]
 cursor.executemany('''
-INSERT INTO customers (firstName, lastName, email, phone, address)
-VALUES (?, ?, ?, ?, ?)
-''', [
-    ('Dhairya', 'Arora', 'dhairya2arora@gmail.com', '9811264318', '357, Hakikat Nagar, Delhi-110009'),
-    ('Yash', 'Khattar', 'yashkhattar73@gmail.com', '8448721780', 'Gurugram, Haryana'),
-    ('Mahak', 'Arora', 'aroradhairya4@gmail.com', '9811264317', '357, Hakikat Nagar, Delhi-110009')
-])
+INSERT INTO customers (userId, firstName, lastName, email, phone, address)
+VALUES (?, ?, ?, ?, ?, ?)
+''', customers)
 
 # Insert sample records into complaints table
+complaints = [
+    (f"T{random.randint(10000, 99999)}", customers[0][0], 'Incorrect item received'),
+    (f"T{random.randint(10000, 99999)}", customers[1][0], 'Late delivery'),
+    (f"T{random.randint(10000, 99999)}", customers[2][0], 'Product arrived damaged'),
+    (f"T{random.randint(10000, 99999)}", customers[3][0], 'Received wrong size'),
+    (f"T{random.randint(10000, 99999)}", customers[4][0], 'Product not as described')
+]
 cursor.executemany('''
-INSERT INTO complaints (userId, issue)
-VALUES (?, ?)
-''', [
-    (1, 'Incorrect item received'),
-    (2, 'Late delivery'),
-    (3, 'Product arrived damaged')
-])
+INSERT INTO complaints (ticketNo, userId, issue)
+VALUES (?, ?, ?)
+''', complaints)
 
 # Insert sample records into orders table
+orders = [
+    (generate_order_id(), customers[0][0], '2024-08-01', 1000, 'Shipped', '357, Hakikat Nagar, Delhi-110009'),
+    (generate_order_id(), customers[1][0], '2024-08-02', 1200, 'Pending', 'Gurugram, Haryana'),
+    (generate_order_id(), customers[2][0], '2024-08-03', 1500, 'Delivered', '357, Hakikat Nagar, Delhi-110009'),
+    (generate_order_id(), customers[3][0], '2024-08-04', 2000, 'Shipped', 'Noida, Uttar Pradesh'),
+    (generate_order_id(), customers[4][0], '2024-08-05', 2500, 'Pending', 'Mumbai, Maharashtra')
+]
 cursor.executemany('''
-INSERT INTO orders (userId, totalAmount, status, shippingAddress)
-VALUES (?, ?, ?, ?)
-''', [
-    (1, 1000, 'Shipped', '357, Hakikat Nagar, Delhi-110009'),
-    (2, 1200, 'Pending', 'Gurugram, Haryana'),
-    (3, 1500, 'Delivered', '357, Hakikat Nagar, Delhi-110009')
-])
+INSERT INTO orders (orderId, userId, orderDate, totalAmount, status, shippingAddress)
+VALUES (?, ?, ?, ?, ?, ?)
+''', orders)
 
 # Insert sample records into products table
+products = [
+    (generate_product_id(), 'Laptop', 70000, 10),
+    (generate_product_id(), 'Smartphone', 30000, 20),
+    (generate_product_id(), 'Headphones', 4000, 50),
+    (generate_product_id(), 'Smartwatch', 10000, 15),
+    (generate_product_id(), 'Keyboard', 1500, 25)
+]
 cursor.executemany('''
-INSERT INTO products (productName, price, stockQuantity)
-VALUES (?, ?, ?)
-''', [
-    ('Laptop', 70000, 10),
-    ('Smartphone', 30000, 20),
-    ('Headphones', 4000, 50)
-])
+INSERT INTO products (productId, productName, price, stockQuantity)
+VALUES (?, ?, ?, ?)
+''', products)
 
 # Insert sample records into orderDetails table
+order_details = [
+    (orders[0][0], products[0][0], 1, 70000),
+    (orders[0][0], products[2][0], 2, 4000),
+    (orders[1][0], products[1][0], 1, 30000),
+    (orders[2][0], products[0][0], 1, 70000),
+    (orders[2][0], products[1][0], 1, 30000),
+    (orders[3][0], products[3][0], 1, 10000),
+    (orders[4][0], products[4][0], 1, 1500)
+]
 cursor.executemany('''
 INSERT INTO orderDetails (orderId, productId, quantity, price)
 VALUES (?, ?, ?, ?)
-''', [
-    (1, 1, 1, 70000),
-    (1, 3, 2, 4000),
-    (2, 2, 1, 30000),
-    (3, 1, 1, 70000),
-    (3, 2, 1, 30000)
-])
+''', order_details)
 
 # Commit and close the connection
 conn.commit()
