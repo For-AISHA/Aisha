@@ -254,7 +254,7 @@ async def invoke_chat(request: Request):
 
 @app.get("/cron-job")
 async def cron_job():
-    return {"response": "Cron job executed successfully."}
+    return "CJ"
 
 if __name__ == '__main__':
     import uvicorn
