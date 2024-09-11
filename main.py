@@ -30,7 +30,7 @@ os.environ['GROQ_API_KEY']=os.getenv('GROQ_API_KEY')
 os.environ['HF_TOKEN']=os.getenv('HF_TOKEN')
 groq_api_key=os.getenv('GROQ_API_KEY')
 
-model=ChatGroq(model='llama3-8b-8192', groq_api_key=groq_api_key)
+model=ChatGroq(model='gemma2-9b-it', groq_api_key=groq_api_key)
 
 embedding=HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
 
@@ -44,11 +44,33 @@ def get_session_history(session_id:str)->BaseChatMessageHistory:
     return store[session_id]
 
 
+def extract_issue_from_response(response_text: str):
+    # Example pattern to extract the issue; adjust as needed
+    issue_pattern = re.compile(r'Issue:\s*([^.]*)')
+    match = issue_pattern.search(response_text)
+    return match.group(1) if match else "Issue details not found."
+
+def add_complaint(ticket_no: str, phone: str, issue: str):
+    conn = sqlite3.connect('walmart.db')
+    cursor = conn.cursor()
+
+    # Insert the complaint into the complaints table
+    cursor.execute('''
+    INSERT INTO complaints (ticketNo, phone, issue)
+    VALUES (?, ?, ?)
+    ''', (ticket_no, phone, issue))
+
+    conn.commit()
+    conn.close()
+    print(f"Complaint added with ticket number {ticket_no}")
+
+
 # Regex patterns
 # 10 digit phone number
-PHONE_PATTERN = re.compile(r'\b\d{10}\b')
+PHONE_PATTERN = re.compile(r'\b\d{4}\s\d{3}\s\d{3}\b')
+
 # 5 digit number followed by 3 uppercase letters
-ORDER_ID_PATTERN = re.compile(r'\b\d{5}[A-Z]{3}\b')
+ORDER_ID_PATTERN = re.compile(r'\b\d{4}\b')
 
 def find_phone_number(text: str):
     match = PHONE_PATTERN.search(text)
@@ -79,6 +101,7 @@ def query_order(order_id: str):
 # Define a dictionary to store FAISS indices for each session
 faiss_indices = {}
 faiss_stores = {}
+complaint_stores = {}
 
 def get_faiss_index(session_id: str):
     if session_id not in faiss_indices:
@@ -155,12 +178,15 @@ prompt = ChatPromptTemplate.from_messages(
     [
         ("system", '''You are AISHA, a calm and helpful customer support agent. Answer the queries in {language}.
                     Greet users & introduce yourself only in the first message of the session and ask for phone number.
-                    Respond to user queries directly, without greetings or unnecessary repetition.
+                    Respond to user queries directly, without greetings or unnecessary repetition or white spaces.
                     DON'T REPEAT THE THINGS YOU HAVE SAID BEFORE.
                     If the user expresses gratitude or says goodbye, acknowledge it politely.
                     If the user's name or phone number is missing, ask for it.
                     For technical issues, provide basic troubleshooting steps.
-                    For complaints, request details and create a ticket.
+                    For complaints, try to resolve the complaint, if you are not able to resolve the issue, or customer is not satisfied,
+                    create a ticket for the customer. REMEMBER: While creating a ticket, always give a ticket number to the customer.
+                    When you are giving a ticket number add this kind of line to your response describing the issue. Issue: write the issue here.
+                    The ticket number should be unique and comprise of 2 random uppercase letters followed by 4 random digits.
                     Avoid answering unrelated questions and guide users to stay on topic.
                     Do not offer discounts or promotions.
                     Keep it short, if the query is solved, ask if they have any more queries.
@@ -219,23 +245,27 @@ async def invoke_chat(request: Request):
     print(f"Received content: {content}")
 
     phone_number = find_phone_number(content)
+    isPhone=False
     if phone_number:
+        isPhone=True
         customer = query_customer(phone_number)
         if customer:
             store_in_faiss(data_tuple=customer, query_type='customer', session_id=session_id)
         else:
             store_in_faiss(data_tuple=f"Customer with phone number {phone_number} not found", query_type='failed', session_id=session_id)
 
-    order_id = find_order_id(content)
-    if order_id:
-        order = query_order(order_id)
-        if order:
-            store_in_faiss(data_tuple=order, query_type='order', session_id=session_id)
-        else:
-            store_in_faiss(data_tuple=f'Order with orderId {order_id} not found', query_type='failed', session_id=session_id)
+    if not isPhone:
+        order_id = find_order_id(content)
+        if order_id:
+            order = query_order(order_id)
+            if order:
+                store_in_faiss(data_tuple=order, query_type='order', session_id=session_id)
+            else:
+                store_in_faiss(data_tuple=f'Order with orderId {order_id} not found', query_type='failed', session_id=session_id)
 
     faiss_results = search_faiss(content, session_id)
-    faiss_context = " ".join(faiss_results) if faiss_results else "No relevant context found."
+    faiss_context = faiss_results if faiss_results else "No relevant context found."
+    print(f"FAISS context: {faiss_context}")
 
     try:
         response = with_message_history.invoke(
@@ -249,6 +279,19 @@ async def invoke_chat(request: Request):
     except Exception as e:
         response = str(e)
 
+    # Check for ticket number in the response
+    ticket_no_match = re.search(r'\b[A-Z]{2}\d{4}\b', response)
+    if ticket_no_match and not complaint_stores.get(session_id):
+        ticket_no = ticket_no_match.group(0)
+        issue = extract_issue_from_response(response)
+        phone=None
+        for context in faiss_context:
+            if 'Phone' in context:
+                phone=context.split('Phone: ')[1].split(',')[0]
+        add_complaint(ticket_no, phone, issue)
+        complaint_stores[session_id] = ticket_no
+        response=response.replace(f' Issue: {issue}.', '').strip()
+
     return {"response": response}
 
 
@@ -258,4 +301,4 @@ async def cron_job():
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='localhost', port=8001)
+    uvicorn.run(app, host='192.168.29.164', port=8001)

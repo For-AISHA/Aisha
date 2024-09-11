@@ -69,8 +69,8 @@ def view_order_details(db_file):
 db_file = 'walmart.db'
 
 # View contents of each table
-# view_customers(db_file)
-# view_complaints(db_file)
+view_customers(db_file)
+view_complaints(db_file)
 view_orders(db_file)
 # view_products(db_file)
 # view_order_details(db_file)

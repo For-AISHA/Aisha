@@ -4,7 +4,7 @@ import string
 
 # Function to generate patterned IDs
 def generate_order_id():
-    return f"{random.randint(10000, 99999)}{random.choice(string.ascii_uppercase)}{random.choice(string.ascii_uppercase)}{random.choice(string.ascii_uppercase)}"
+    return f"{random.randint(1000, 9999)}"
 
 def generate_product_id():
     number_part = random.randint(1000, 9999)
@@ -13,6 +13,9 @@ def generate_product_id():
 
 def generate_user_id():
     return f"U{random.randint(1000, 9999)}"
+
+def generate_ticket_no():
+    return f"{random.choice(string.ascii_uppercase)}{random.choice(string.ascii_uppercase)}{random.randint(1000, 9999)}"
 
 # Connect to SQLite database (or create it if it doesn't exist)
 conn = sqlite3.connect('walmart.db')
@@ -33,15 +36,15 @@ CREATE TABLE IF NOT EXISTS customers (
 )
 ''')
 
-# Complaints table
+# Complaints table with phone number instead of userId
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS complaints (
     ticketNo TEXT PRIMARY KEY,
-    userId TEXT,
+    phone TEXT,
     issue TEXT NOT NULL,
     complaintDate DATE DEFAULT (datetime('now')),
     status TEXT DEFAULT 'Open',
-    FOREIGN KEY (userId) REFERENCES customers (userId)
+    FOREIGN KEY (phone) REFERENCES customers (phone)
 )
 ''')
 
@@ -83,9 +86,9 @@ CREATE TABLE IF NOT EXISTS orderDetails (
 
 # Insert sample records into customers table
 customers = [
-    (generate_user_id(), 'Dhairya', 'Arora', 'dhairya2arora@gmail.com', '9811264318', '357, Hakikat Nagar, Delhi-110009'),
-    (generate_user_id(), 'Yash', 'Khattar', 'yashkhattar73@gmail.com', '8448721780', 'Gurugram, Haryana'),
-    (generate_user_id(), 'Mahak', 'Arora', 'aroradhairya4@gmail.com', '9811264317', '357, Hakikat Nagar, Delhi-110009'),
+    (generate_user_id(), 'Dhairya', 'Arora', 'dhairya2arora@gmail.com', '9811 264 318', '357, Hakikat Nagar, Delhi-110009'),
+    (generate_user_id(), 'Yash', 'Khattar', 'yashkhattar73@gmail.com', '8448 721 780', 'Gurugram, Haryana'),
+    (generate_user_id(), 'Mahak', 'Arora', 'aroradhairya4@gmail.com', '9811 264 317', '357, Hakikat Nagar, Delhi-110009'),
     (generate_user_id(), 'Ravi', 'Sharma', 'ravi.sharma@example.com', '9876543210', 'Noida, Uttar Pradesh'),
     (generate_user_id(), 'Sneha', 'Patel', 'sneha.patel@example.com', '9988776655', 'Mumbai, Maharashtra')
 ]
@@ -96,14 +99,14 @@ VALUES (?, ?, ?, ?, ?, ?)
 
 # Insert sample records into complaints table
 complaints = [
-    (f"T{random.randint(10000, 99999)}", customers[0][0], 'Incorrect item received'),
-    (f"T{random.randint(10000, 99999)}", customers[1][0], 'Late delivery'),
-    (f"T{random.randint(10000, 99999)}", customers[2][0], 'Product arrived damaged'),
-    (f"T{random.randint(10000, 99999)}", customers[3][0], 'Received wrong size'),
-    (f"T{random.randint(10000, 99999)}", customers[4][0], 'Product not as described')
+    (generate_ticket_no(), customers[0][4], 'Incorrect item received'),
+    (generate_ticket_no(), customers[1][4], 'Late delivery'),
+    (generate_ticket_no(), customers[2][4], 'Product arrived damaged'),
+    (generate_ticket_no(), customers[3][4], 'Received wrong size'),
+    (generate_ticket_no(), customers[4][4], 'Product not as described')
 ]
 cursor.executemany('''
-INSERT INTO complaints (ticketNo, userId, issue)
+INSERT INTO complaints (ticketNo, phone, issue)
 VALUES (?, ?, ?)
 ''', complaints)
 
