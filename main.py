@@ -301,4 +301,4 @@ async def cron_job():
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='192.168.29.164', port=8001)
+    uvicorn.run(app, host='localhost', port=8001)
